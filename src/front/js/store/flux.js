@@ -2,6 +2,7 @@ const getState = ({ getStore, getActions, setStore }) => {
 	return {
 		store: {
 			message: null,
+			user: [],
 			demo: [
 				{
 					title: "FIRST",
@@ -46,7 +47,96 @@ const getState = ({ getStore, getActions, setStore }) => {
 
 				//reset the global store
 				setStore({ demo: demo });
-			}
+			},signUp: async (name, email, password) => {
+				try {
+					const resp = await fetch(process.env.BACKEND_URL + "api/signup", {
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+						},
+						body: JSON.stringify({
+							name: name,
+							email: email,
+							password: password
+						}),
+					});
+					const data = await resp.json();
+					console.log(data);
+
+					// Actualiza el estado global con la información del usuario
+					setStore({ user: data });
+
+					return data;
+				} catch (error) {
+					console.log("Error signing up", error);
+				}
+			},
+			signIn: async (email, password) => {
+				try {
+					const resp = await fetch(process.env.BACKEND_URL + "/api/login", {
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+						},
+						body: JSON.stringify({
+							email: email,
+							password: password
+						}),
+					});
+					const data = await resp.json();
+
+					// Actualiza el estado global con la información del usuario si la autenticación es exitosa
+					if (resp.ok) {
+						// Almacena el token en localStorage
+						localStorage.setItem("jwt-token", data.access_token);
+						console.log("User signed in successfully!");
+						return true;
+					} else {
+						// Si hay un error, lógica para manejarlo (p. ej., mostrar un mensaje de error)
+						console.log("Error signing in:", data.message);
+						return false;
+					}
+
+				} catch (error) {
+					console.log("Error signing in:", error);
+					return false;
+				}
+			},
+			logOut: () => {
+				// Borra el objeto user del estado global
+				setStore({ user: null });
+
+				// Borra el token del almacenamiento local
+				localStorage.removeItem("jwt-token");
+
+				// Muestra un mensaje de éxito
+				// toast.success("Has cerrado sesión correctamente");
+			},
+			getUser: async () => {
+				try {
+					const token = localStorage.getItem("jwt-token");
+					const resp = await fetch(process.env.BACKEND_URL + "/api/profile", {
+						method: "GET",
+						headers: {
+							Authorization: `Bearer ${token}`,
+						},
+					});
+
+					if (!resp.ok) {
+						throw new Error("Error al obtener datos del usuario");
+					}
+
+					const data = await resp.json();
+
+					// Actualiza el estado global con la información del usuario
+					setStore({ user: data });
+
+					return data;
+				} catch (error) {
+					console.log("Error al obtener datos del usuario", error);
+					throw error;
+				}
+			},
 		}
 	};
 };
